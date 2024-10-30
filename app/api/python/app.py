@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": [
+    "https://glp-1.vercel.app"
+]}})
 load_dotenv()
 
 class GLP1Bot:
