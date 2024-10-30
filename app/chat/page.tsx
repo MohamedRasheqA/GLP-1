@@ -70,7 +70,8 @@ export default function Chat() {
         method: 'POST',
          headers: {
         'Content-Type': 'application/json',
-        'Origin': 'https://glp-1.vercel.app'
+        'Origin': 'https://glp-1.vercel.app',
+            'X-Validation-Status': 'valid'
       },
         body: JSON.stringify({ query: input }),
       });
