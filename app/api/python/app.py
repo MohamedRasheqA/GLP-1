@@ -219,6 +219,8 @@ def after_request(response):
         response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Credentials"] = "true"
+        if request.method == "OPTIONS":
+            return response, 204
     return response
 
 if __name__ == '__main__':
