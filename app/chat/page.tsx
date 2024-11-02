@@ -62,6 +62,7 @@ export default function Chat() {
       content: input,
       timestamp: new Date().toISOString()
     };
+    
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
@@ -69,8 +70,9 @@ export default function Chat() {
       const response = await fetch('https://glp-1-llm.vercel.app/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
+        mode: 'cors',
         credentials: 'include',
         body: JSON.stringify({ query: input }),
       });

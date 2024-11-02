@@ -9,10 +9,11 @@ from datetime import datetime
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {
-    "origins": ["https://glp-1.vercel.app", "https://glp-1-llm.vercel.app"],
+    "origins": ["https://glp-1.vercel.app"],
     "methods": ["GET", "POST", "OPTIONS"],
-    "allow_headers": ["Content-Type", "Authorization", "X-Validation-Status"],
-    "supports_credentials": True
+    "allow_headers": ["Content-Type", "Authorization"],
+    "supports_credentials": True,
+    "max_age": 600
 }})
 load_dotenv()
 
@@ -177,6 +178,18 @@ class GLP1Bot:
             }
 
 bot = GLP1Bot()
+
+@app.route('/api/chat', methods=['OPTIONS'])
+def handle_options():
+    response = jsonify({})
+    origin = request.headers.get('Origin')
+    if origin == "https://glp-1.vercel.app":
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Max-Age', '600')
+    return response, 200
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
