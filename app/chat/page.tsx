@@ -74,7 +74,7 @@ export default function Chat() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ query: input }),
-        signal: AbortSignal.timeout(35000) // 35 second timeout
+        signal: AbortSignal.timeout(3500000) // 35 second timeout
       });
 
       if (!response.ok) {
