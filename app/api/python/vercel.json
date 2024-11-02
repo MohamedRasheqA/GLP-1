@@ -5,10 +5,5 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "app.py" }
-  ],
-  "functions": {
-    "api/python/app.py": {
-      "maxDuration": 60
-    }
-  }
+  ]
 }
