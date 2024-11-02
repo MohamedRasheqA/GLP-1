@@ -70,10 +70,10 @@ export default function Chat() {
       const response = await fetch('https://glp-1-llm.vercel.app/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Origin': 'https://glp-1.vercel.app'
         },
-        mode: 'cors',
-        credentials: 'include',
+        credentials: 'same-origin',
         body: JSON.stringify({ query: input }),
       });
 

@@ -7,13 +7,16 @@ from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from datetime import datetime
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {
-    "origins": "https://glp-1.vercel.app",
+corsOptions = {
+    "origins": ["https://glp-1.vercel.app"],
     "methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization"],
-    "supports_credentials": True
-}})
+    "supports_credentials": True,
+    "optionsSuccessStatus": 204
+}
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": corsOptions})
 load_dotenv()
 
 class GLP1Bot:
@@ -210,10 +213,12 @@ def chat():
 
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', 'https://glp-1.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    origin = request.headers.get('Origin')
+    if origin == "https://glp-1.vercel.app":
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 if __name__ == '__main__':
