@@ -66,11 +66,19 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
+<<<<<<< HEAD
       const response = await fetch('http://127.0.0.1:5000/api/chat', {
         method: 'POST',
          headers: {
         'Content-Type': 'application/json',
         'Origin': 'http://localhost:3000',
+=======
+      const response = await fetch('https://glp-1-llm.vercel.app/api/chat', {
+        method: 'POST',
+         headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'https://glp-1.vercel.app',
+>>>>>>> ee10226a9e2dc47fd18659d6f899e5a9c8129c8f
             'X-Validation-Status': 'valid'
       },
         body: JSON.stringify({ query: input }),
