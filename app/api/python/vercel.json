@@ -5,20 +5,13 @@
   ],
   "routes": [
     {
+      "src": "/api/chat",
+      "methods": ["OPTIONS"],
+      "dest": "app.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "app.py"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "https://glp-1.vercel.app" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
-        { "key": "Access-Control-Max-Age", "value": "600" }
-      ]
     }
   ]
 }

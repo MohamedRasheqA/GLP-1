@@ -12,7 +12,7 @@ corsOptions = {
     "methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization"],
     "supports_credentials": True,
-    "optionsSuccessStatus": 204
+    "max_age": 600
 }
 
 app = Flask(__name__)
@@ -216,11 +216,9 @@ def after_request(response):
     origin = request.headers.get('Origin')
     if origin == "https://glp-1.vercel.app":
         response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Credentials"] = "true"
-        if request.method == "OPTIONS":
-            return response, 204
     return response
 
 if __name__ == '__main__':
