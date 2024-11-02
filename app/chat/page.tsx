@@ -70,7 +70,6 @@ export default function Chat() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Origin': 'https://glp-1.vercel.app'
         },
         credentials: 'include',
         body: JSON.stringify({ query: input }),
