@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 "use client";
 
-=======
->>>>>>> ee10226a9e2dc47fd18659d6f899e5a9c8129c8f
 import React from 'react'
 import Link from 'next/link'
 
