@@ -13,6 +13,9 @@ export async function POST(request: Request) {
 
     console.log('Sending request to LLM API:', query);
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 590000); // 590 second timeout
+
     const response = await fetch('https://glp-1-llm.vercel.app/api/chat', {
       method: 'POST',
       headers: {
@@ -20,9 +23,10 @@ export async function POST(request: Request) {
         'Accept': 'application/json',
       },
       body: JSON.stringify({ query }),
+      signal: controller.signal
     });
 
-    console.log('LLM API Response Status:', response.status);
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -31,15 +35,9 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    console.log('LLM API Response Data:', data);
-    
     return NextResponse.json(data);
     
   } catch (error) {
     console.error('API Error:', error);
-    return NextResponse.json({
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Internal server error'
-    }, { status: 500 });
   }
 } 

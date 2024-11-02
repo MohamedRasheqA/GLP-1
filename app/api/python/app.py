@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app,
      resources={
          r"/api/*": {
-             "origins": ["https://glp-1.vercel.app"],
+             "origins": ["https://glp-1.vercel.app", "https://glp-1-llm.vercel.app"],
              "methods": ["POST", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization"],
              "expose_headers": ["Content-Type"],
@@ -43,7 +43,6 @@ class GLP1Bot:
         6. Use proper formatting with headers and bullet points
         Always maintain a professional yet approachable tone and include necessary safety disclaimers."""
     def get_pplx_response(self, query: str) -> Optional[str]:
-        """Get response from PPLX API"""
         try:
             payload = {
                 "model": self.pplx_model,
@@ -54,14 +53,19 @@ class GLP1Bot:
                 "temperature": float(os.getenv("TEMPERATURE", "0.1")),
                 "max_tokens": int(os.getenv("MAX_TOKENS", "1500"))
             }
-            response = requests.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers=self.pplx_headers,
-                json=payload,
-                timeout=580
-            )
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+            
+            with requests.Session() as session:
+                response = session.post(
+                    "https://api.perplexity.ai/chat/completions",
+                    headers=self.pplx_headers,
+                    json=payload,
+                    timeout=(30, 580)  # (connect timeout, read timeout)
+                )
+                response.raise_for_status()
+                return response.json()["choices"][0]["message"]["content"]
+        except requests.Timeout:
+            print("Request to PPLX timed out")
+            raise TimeoutError("LLM request timed out")
         except Exception as e:
             print(f"Error communicating with PPLX: {str(e)}")
             return None
