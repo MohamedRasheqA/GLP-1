@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
 from openai import OpenAI
@@ -21,6 +21,13 @@ CORS(app,
      })
 
 load_dotenv()
+
+
+@app.route('/')
+@app.route('/database')
+def serve_spa():
+    return render_template('index.html')
+
 
 class GLP1Bot:
     def __init__(self):
