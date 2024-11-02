@@ -74,15 +74,19 @@ export default function Chat() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ query: input }),
+        signal: AbortSignal.timeout(35000) // 35 second timeout
       });
 
-      console.log('Chat response status:', response.status);
+      if (!response.ok) {
+        if (response.status === 504) {
+          throw new Error('Request timed out. Please try again.');
+        }
+        const errorText = await response.text();
+        throw new Error(`Server error: ${response.status}`);
+      }
+
       const data = await response.json();
       console.log('Chat response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.message || `Error: ${response.status}`);
-      }
 
       if (data.status === 'success' && data.response) {
         const botMessage: ChatMessage = {
@@ -101,7 +105,7 @@ export default function Chat() {
         type: 'bot',
         content: error instanceof Error ? 
           `Error: ${error.message}` : 
-          'Sorry, there was an error processing your request.',
+          'Sorry, the request timed out. Please try again.',
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
