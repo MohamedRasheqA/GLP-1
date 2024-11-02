@@ -70,7 +70,7 @@ class GLP1Bot:
                 "https://api.perplexity.ai/chat/completions",
                 headers=self.pplx_headers,
                 json=payload,
-                timeout=30
+                timeout=45
             )
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]
