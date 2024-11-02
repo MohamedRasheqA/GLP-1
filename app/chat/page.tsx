@@ -71,7 +71,7 @@ export default function Chat() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5900000); // 5900 second timeout
 
-      const response = await fetch('https://glp-1-llm.vercel.app/api/chat', {
+      const response = await fetch('api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
