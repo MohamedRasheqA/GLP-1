@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 590000); // 590 second timeout
 
-    const response = await fetch('https://glp-1-llm.vercel.app/api/chat', {
+    const response = await fetch('https://glp-1-xplo.vercel.app/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
