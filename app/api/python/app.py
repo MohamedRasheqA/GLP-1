@@ -11,12 +11,12 @@ app = Flask(__name__)
 CORS(app, 
      resources={
          r"/api/*": {
-             "origins": ["https://glp-1.vercel.app", "http://localhost:3000"],
+             "origins": ["https://glp-1.vercel.app"],
              "methods": ["POST", "OPTIONS"],
-             "allow_headers": ["Content-Type"],
+             "allow_headers": ["Content-Type", "Authorization"],
              "expose_headers": ["Content-Type"],
              "max_age": 86400,
-             "supports_credentials": False
+             "supports_credentials": True
          }
      })
 
@@ -215,12 +215,10 @@ def chat():
 
 @app.after_request
 def after_request(response):
-    origin = request.headers.get('Origin')
-    if origin == "https://glp-1.vercel.app":
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers.add('Access-Control-Allow-Origin', 'https://glp-1.vercel.app')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
 
 if __name__ == '__main__':
