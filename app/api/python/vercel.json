@@ -5,8 +5,8 @@
       "src": "app.py", 
       "use": "@vercel/python",
       "config": {
-        "maxDuration": 600,
-        "memory": 1024
+        "maxDuration": 6000,
+        "memory": 3008
       }
     }
   ],
