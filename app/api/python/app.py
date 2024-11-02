@@ -7,16 +7,19 @@ from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from datetime import datetime
 
-corsOptions = {
-    "origins": ["https://glp-1.vercel.app"],
-    "methods": ["GET", "POST", "OPTIONS"],
-    "allow_headers": ["Content-Type", "Authorization"],
-    "supports_credentials": True,
-    "max_age": 600
-}
-
 app = Flask(__name__)
-CORS(app, resources={r"/*": corsOptions})
+CORS(app, 
+     resources={
+         r"/api/*": {
+             "origins": ["https://glp-1.vercel.app", "http://localhost:3000"],
+             "methods": ["POST", "OPTIONS"],
+             "allow_headers": ["Content-Type"],
+             "expose_headers": ["Content-Type"],
+             "max_age": 86400,
+             "supports_credentials": False
+         }
+     })
+
 load_dotenv()
 
 class GLP1Bot:
@@ -202,7 +205,7 @@ def chat():
             }), 400
 
         response = bot.process_query(query)
-        return jsonify(response)
+        return jsonify(response), 200
 
     except Exception as e:
         return jsonify({
