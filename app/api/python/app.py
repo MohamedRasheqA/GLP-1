@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 corsOptions = {
-    "origins": ["https://glp-1.vercel.app", "http://localhost:3000"],
+    "origins": ["https://glp-1.vercel.app"],
     "methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization"],
     "supports_credentials": True,
@@ -185,9 +185,8 @@ bot = GLP1Bot()
 def handle_options():
     response = jsonify({})
     response.headers.add('Access-Control-Allow-Origin', 'https://glp-1.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
     response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response, 200
 
 @app.route('/api/chat', methods=['POST'])
