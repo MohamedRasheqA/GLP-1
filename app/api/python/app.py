@@ -82,7 +82,8 @@ class GLP1Bot:
             response = requests.post(
                 "https://api.perplexity.ai/chat/completions",
                 headers=self.pplx_headers,
-                json=payload
+                json=payload,
+                timeout=30  # 30 second timeout
             )
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]
@@ -107,7 +108,8 @@ class GLP1Bot:
                     {"role": "user", "content": validation_prompt}
                 ],
                 temperature=float(os.getenv("TEMPERATURE", "0.1")),
-                max_tokens=int(os.getenv("MAX_TOKENS", "1500"))
+                max_tokens=int(os.getenv("MAX_TOKENS", "1500")),
+                timeout=25  # 25 second timeout
             )
             return completion.choices[0].message.content
         except Exception as e:
