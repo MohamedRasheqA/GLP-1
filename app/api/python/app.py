@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 
 corsOptions = {
-    "origins": ["https://glp-1.vercel.app"],
+    "origins": ["https://glp-1.vercel.app", "http://localhost:3000"],
     "methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization"],
     "supports_credentials": True,
