@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app,
      resources={
          r"/api/*": {
-             "origins": ["https://glp-1.vercel.app", "https://glp-1-llm.vercel.app"],
+             "origins": ["https://glp-1-lovat.vercel.app", "https://glp-1-xplo.vercel.app"],
              "methods": ["POST", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization"],
              "expose_headers": ["Content-Type"],
