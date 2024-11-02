@@ -56,7 +56,6 @@ export default function Chat() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Add user message
     const userMessage: ChatMessage = {
       type: 'user',
       content: input,
@@ -65,6 +64,7 @@ export default function Chat() {
     
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    setInput('');
 
     try {
       const response = await fetch('/api/chat', {
@@ -72,39 +72,38 @@ export default function Chat() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          query: input
-        }),
+        body: JSON.stringify({ query: input }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(data.message || 'Failed to get response');
       }
 
-      const data: ChatResponse = await response.json();
-
-      if (data.status === 'success') {
+      if (data.status === 'success' && data.response) {
         const botMessage: ChatMessage = {
           type: 'bot',
           content: data.response,
-          timestamp: data.timestamp,
+          timestamp: data.timestamp || new Date().toISOString(),
           category: data.query_category
         };
         setMessages(prev => [...prev, botMessage]);
       } else {
-        throw new Error(data.response);
+        throw new Error(data.message || 'Invalid response format');
       }
     } catch (error) {
       const errorMessage: ChatMessage = {
         type: 'bot',
-        content: 'Sorry, there was an error processing your request.',
+        content: error instanceof Error ? 
+          `Error: ${error.message}` : 
+          'Sorry, there was an error processing your request.',
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
-
-    setInput('');
-    setIsLoading(false);
   };
 
   return (
