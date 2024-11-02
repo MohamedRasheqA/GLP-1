@@ -71,10 +71,18 @@ export default function Chat() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         mode: 'cors',
-        body: JSON.stringify({ query: input }),
+        body: JSON.stringify({ 
+          query: input,
+          status: 'ok' 
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data: ChatResponse = await response.json();
 
