@@ -11,6 +11,8 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    console.log('Sending request to LLM API:', query);
+    
     const response = await fetch('https://glp-1-llm.vercel.app/api/chat', {
       method: 'POST',
       headers: {
@@ -20,11 +22,17 @@ export async function POST(request: Request) {
       body: JSON.stringify({ query }),
     });
 
+    console.log('LLM API Response Status:', response.status);
+
     if (!response.ok) {
-      throw new Error(`LLM API responded with status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('LLM API Error:', errorText);
+      throw new Error(`LLM API responded with status: ${response.status}. Details: ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('LLM API Response Data:', data);
+    
     return NextResponse.json(data);
     
   } catch (error) {

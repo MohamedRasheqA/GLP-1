@@ -67,6 +67,7 @@ export default function Chat() {
     setInput('');
 
     try {
+      console.log('Sending chat request:', input);
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -75,10 +76,12 @@ export default function Chat() {
         body: JSON.stringify({ query: input }),
       });
 
+      console.log('Chat response status:', response.status);
       const data = await response.json();
+      console.log('Chat response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to get response');
+        throw new Error(data.message || `Error: ${response.status}`);
       }
 
       if (data.status === 'success' && data.response) {
@@ -93,6 +96,7 @@ export default function Chat() {
         throw new Error(data.message || 'Invalid response format');
       }
     } catch (error) {
+      console.error('Chat error:', error);
       const errorMessage: ChatMessage = {
         type: 'bot',
         content: error instanceof Error ? 
