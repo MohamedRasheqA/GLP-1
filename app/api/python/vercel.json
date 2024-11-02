@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/python/app.py": {
+    "/api/python/*.py": {
       "maxDuration": 600
     }
   }
