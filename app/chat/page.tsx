@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageCircle, Send } from "lucide-react";
 
-
 interface ChatResponse {
-  status: string;
+  status?: string;
   query_category: string;
   original_query: string;
   response: string;
-  timestamp: string;
+  disclaimer: string;
+  sources: string;
 }
 
 interface ChatMessage {
@@ -21,6 +21,8 @@ interface ChatMessage {
   content: string;
   timestamp?: string;
   category?: string;
+  sources?: string;
+  disclaimer?: string;
 }
 
 const formatMessage = (content: string) => {
@@ -29,19 +31,13 @@ const formatMessage = (content: string) => {
   content = content.replace(/([^\n])## /g, '$1\n## ');
   content = content.replace(/([^\n])### /g, '$1\n### ');
   
-  // Convert ## headings to custom styled h2 (subheadings)
+  // Convert headings to styled elements
   content = content.replace(/## (.*)/g, '<h2 class="text-lg font-semibold text-blue-700 mt-6 mb-3">$1</h2>');
-  
-  // Convert ### headings to custom styled h3 (smaller subheadings)
   content = content.replace(/### (.*)/g, '<h3 class="text-md font-semibold text-blue-600 mt-4 mb-2">$1</h3>');
-  
-  // Convert # headings to custom styled h1 (main headings)
   content = content.replace(/# (.*)/g, '<h1 class="text-xl font-bold text-blue-800 mt-8 mb-4">$1</h1>');
   
-  // Convert ** bold text ** to styled spans
+  // Style text elements
   content = content.replace(/\*\*(.*?)\*\*/g, '<span class="font-semibold text-blue-700">$1</span>');
-  
-  // Convert bullet points to styled lists
   content = content.replace(/• (.*)/g, '<li class="ml-4 text-blue-600">• $1</li>');
   
   return content;
@@ -67,43 +63,32 @@ export default function Chat() {
     setInput('');
 
     try {
-      console.log('Sending chat request:', input);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5900000); // 5900 second timeout
-
-      const response = await fetch('api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
-        body: JSON.stringify({ query: input }),
-        signal: controller.signal
+        body: JSON.stringify({ query: input })
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        if (response.status === 504) {
-          throw new Error('Request timed out. Please try again.');
-        }
-        const errorText = await response.text();
         throw new Error(`Server error: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('Chat response data:', data);
-
-      if (data.status === 'success' && data.response) {
+      const data: ChatResponse = await response.json();
+      
+      if (data.response) {
         const botMessage: ChatMessage = {
           type: 'bot',
           content: data.response,
-          timestamp: data.timestamp || new Date().toISOString(),
-          category: data.query_category
+          timestamp: new Date().toISOString(),
+          category: data.query_category,
+          sources: data.sources,
+          disclaimer: data.disclaimer
         };
         setMessages(prev => [...prev, botMessage]);
       } else {
-        throw new Error(data.message || 'Invalid response format');
+        throw new Error('Invalid response format');
       }
     } catch (error) {
       console.error('Chat error:', error);
@@ -111,7 +96,7 @@ export default function Chat() {
         type: 'bot',
         content: error instanceof Error ? 
           `Error: ${error.message}` : 
-          'Sorry, the request timed out. Please try again.',
+          'An error occurred. Please try again.',
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -155,6 +140,17 @@ export default function Chat() {
                         : message.content 
                     }}
                   />
+                  {message.sources && (
+                    <div className="mt-2 text-sm text-gray-600 border-t pt-2">
+                      <strong>Sources:</strong>
+                      <div dangerouslySetInnerHTML={{ __html: formatMessage(message.sources) }} />
+                    </div>
+                  )}
+                  {message.disclaimer && (
+                    <div className="mt-2 text-sm text-red-600 border-t pt-2">
+                      {message.disclaimer}
+                    </div>
+                  )}
                   {message.timestamp && (
                     <div className="text-xs text-gray-500 mt-1">
                       {new Date(message.timestamp).toLocaleTimeString()}

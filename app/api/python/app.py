@@ -1,76 +1,128 @@
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
-import os
 import requests
-from typing import Dict, Any, Optional
+import json
+import os
+from typing import Dict, Any, Optional, Generator
 from dotenv import load_dotenv
-from datetime import datetime
-app = Flask(__name__)
-CORS(app,
-     resources={
-         r"/api/*": {
-             "origins": ["https://glp-1-lovat.vercel.app", "https://glp-1-xplo.vercel.app"],
-             "methods": ["POST", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "expose_headers": ["Content-Type"],
-             "max_age": 86400,
-             "supports_credentials": True
-         }
-     })
+
+# Load environment variables
 load_dotenv()
-@app.route('/')
-@app.route('/database')
-def serve_spa():
-    return render_template('index.html')
+
 class GLP1Bot:
-    def __init__(self):
-        self.pplx_api_key = os.getenv("PPLX_API_KEY")
-        self.pplx_model = os.getenv("PPLX_MODEL", "llama-3.1-sonar-large-128k-online")
+    def __init__(self, model: str = "llama-3.1-sonar-large-128k-online"):
+        """Initialize the GLP1Bot with PPLX client and system prompts"""
+        self.pplx_api_key = os.getenv('PPLX_API_KEY')
         if not self.pplx_api_key:
-            raise ValueError("PPLX API key not found in environment variables")
+            raise ValueError("PPLX_API_KEY not found in environment variables")
+            
+        self.pplx_model = model
         self.pplx_headers = {
             "Authorization": f"Bearer {self.pplx_api_key}",
             "Content-Type": "application/json"
         }
-        self.pplx_system_prompt = """You are a comprehensive medical information assistant specialized in GLP-1 medications.
-        Provide detailed, evidence-based information about GLP-1 medications, focusing on medical accuracy and completeness.
-        Your responses should:
-        1. Be medically accurate and evidence-based
-        2. Have clear, well-structured sections
-        3. Include appropriate medical disclaimers
-        4. Be easy for patients to understand
-        5. Be comprehensive yet concise
-        6. Use proper formatting with headers and bullet points
-        Always maintain a professional yet approachable tone and include necessary safety disclaimers."""
-    def get_pplx_response(self, query: str) -> Optional[str]:
+        self.pplx_system_prompt = """
+You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1 medications (such as Ozempic, Wegovy, Mounjaro, etc.). You must:
+1. ONLY provide information about GLP-1 medications and directly related topics
+2. For any query not specifically about GLP-1 medications or their direct effects, respond with:
+   "I apologize, but I can only provide information about GLP-1 medications and related topics. Your question appears to be about something else. Please ask a question specifically about GLP-1 medications, their usage, effects, or related concerns."
+3. For valid GLP-1 queries, structure your response with:
+   - An empathetic opening acknowledging the patient's situation
+   - Clear, validated medical information about GLP-1 medications
+   - Important safety considerations or disclaimers
+   - An encouraging closing that reinforces their healthcare journey
+4. Always provide source citations which is related to the generated response. Importantly only provide sources for about GLP-1 medications
+Remember: You must NEVER provide information about topics outside of GLP-1 medications and their direct effects.
+Each response must include relevant medical disclaimers and encourage consultation with healthcare providers.
+You are a medical content validator specialized in GLP-1 medications.
+Review and enhance the information about GLP-1 medications only.
+Maintain a professional yet approachable tone, emphasizing both expertise and emotional support.
+"""
+    def stream_response(self, query: str) -> Generator[Dict[str, Any], None, None]:
+        """Stream response from PPLX API with sources"""
         try:
             payload = {
                 "model": self.pplx_model,
                 "messages": [
                     {"role": "system", "content": self.pplx_system_prompt},
-                    {"role": "user", "content": query}
+                    {"role": "user", "content": f"{query}\n\nPlease include sources for the information provided."}
                 ],
-                "temperature": float(os.getenv("TEMPERATURE", "0.1")),
-                "max_tokens": int(os.getenv("MAX_TOKENS", "1500"))
+                "temperature": 0.1,
+                "max_tokens": 4096,
+                "stream": True
             }
-            
-            with requests.Session() as session:
-                response = session.post(
-                    "https://api.perplexity.ai/chat/completions",
-                    headers=self.pplx_headers,
-                    json=payload,
-                    timeout=(30, 580)  # (connect timeout, read timeout)
-                )
-                response.raise_for_status()
-                return response.json()["choices"][0]["message"]["content"]
-        except requests.Timeout:
-            print("Request to PPLX timed out")
-            raise TimeoutError("LLM request timed out")
+            response = requests.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers=self.pplx_headers,
+                json=payload,
+                stream=True
+            )
+            response.raise_for_status()
+            accumulated_content = ""
+            for line in response.iter_lines():
+                if line:
+                    line = line.decode('utf-8')
+                    if line.startswith('data: '):
+                        try:
+                            json_str = line[6:]
+                            if json_str.strip() == '[DONE]':
+                                break
+                            chunk = json.loads(json_str)
+                            if chunk['choices'][0]['finish_reason'] is not None:
+                                break
+                            content = chunk['choices'][0]['delta'].get('content', '')
+                            if content:
+                                accumulated_content += content
+                                yield {
+                                    "type": "content",
+                                    "data": content,
+                                    "accumulated": accumulated_content
+                                }
+                        except json.JSONDecodeError:
+                            continue
+            content_parts = accumulated_content.split("\nSources:", 1)
+            main_content = content_parts[0].strip()
+            sources = content_parts[1].strip() if len(content_parts) > 1 else "no sources provided"
+            yield {
+                "type": "complete",
+                "content": main_content,
+                "sources": sources
+            }
         except Exception as e:
-            print(f"Error communicating with PPLX: {str(e)}")
-            return None
-    def format_response(self, response: str) -> str:
-               return response
+            yield {
+                "type": "error",
+                "message": f"Error communicating with PPLX: {str(e)}"
+            }
+    def process_query(self, user_query: str) -> Dict[str, Any]:
+        """Process user query and return response"""
+        try:
+            if not user_query.strip():
+                return {
+                    "status": "error",
+                    "message": "Please enter a valid question."
+                }
+            query_category = self.categorize_query(user_query)
+            full_response = ""
+            sources = ""
+            for chunk in self.stream_response(user_query):
+                if chunk["type"] == "error":
+                    return {"status": "error", "message": chunk["message"]}
+                elif chunk["type"] == "content":
+                    full_response = chunk["accumulated"]
+                elif chunk["type"] == "complete":
+                    full_response = chunk["content"]
+                    sources = chunk["sources"]
+            disclaimer = "Always consult your healthcare provider before making any changes to your medication or treatment plan."
+            return {
+                "query_category": query_category,
+                "original_query": user_query,
+                "response": full_response,
+                "disclaimer": disclaimer,
+                "sources": sources
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Error processing query: {str(e)}"
+            }
     def categorize_query(self, query: str) -> str:
         """Categorize the user query"""
         categories = {
@@ -87,66 +139,22 @@ class GLP1Bot:
             if any(keyword in query_lower for keyword in keywords):
                 return category
         return "general"
-    def process_query(self, user_query: str) -> Dict[str, Any]:
-        """Process user query through PPLX"""
-        try:
-            if not user_query.strip():
-                return {
-                    "status": "error",
-                    "message": "Please enter a valid question."
-                }
-            print("\n:magnifying_glass: Retrieving information from medical knowledge base...")
-            pplx_response = self.get_pplx_response(user_query)
-            if not pplx_response:
-                return {
-                    "status": "error",
-                    "message": "Failed to retrieve information from knowledge base."
-                }
-            query_category = self.categorize_query(user_query)
-            formatted_response = self.format_response(pplx_response)
-            return {
-                "status": "success",
-                "query_category": query_category,
-                "original_query": user_query,
-                "response": formatted_response,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Error processing query: {str(e)}"
-            }
-bot = GLP1Bot()
-@app.route('/api/chat', methods=['OPTIONS'])
-def handle_options():
-    response = jsonify({})
-    response.headers.add('Access-Control-Allow-Origin', 'https://glp-1.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-    response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    return response, 200
-@app.route('/api/chat', methods=['POST'])
-def chat():
+def main():
+    """Main function to handle user input and display JSON response"""
     try:
-        data = request.json
-        query = data.get('query')
-        if not query:
-            return jsonify({
-                "status": "error",
-                "message": "No query provided"
-            }), 400
-        response = bot.process_query(query)
-        return jsonify(response), 200
+        bot = GLP1Bot()
+        while True:
+            print("\nEnter your query about GLP-1 medications (or 'exit' to quit):")
+            query = input("> ").strip()
+            if query.lower() == 'exit':
+                break
+            response = bot.process_query(query)
+            # Print formatted JSON response
+            print(json.dumps(response, indent=2, ensure_ascii=False))
+    except KeyboardInterrupt:
+        print("\nExiting program...")
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', 'https://glp-1.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
-if __name__ == '__main__':
-    app.run(port=5000)
+        print(json.dumps({"status": "error", "message": str(e)}, indent=2))
+if __name__ == "__main__":
+    main()
+
