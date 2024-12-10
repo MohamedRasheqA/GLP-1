@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
-       "origins": ["http://localhost:3000", "https://glp-1-lovat.vercel.app", "https://glp-1-xplo.vercel.app"],
+        "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
         "methods": ["POST", "GET", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
