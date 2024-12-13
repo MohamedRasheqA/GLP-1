@@ -6,15 +6,16 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from datetime import datetime
+import re
+import logging
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 import torch
 import openai
 import io
 import base64
-import logging
-import re
 
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ CORS(app,
      resources={
          r"/api/*": {
              "origins": ["http://localhost:3000", "https://glp-1-lovat.vercel.app", "https://glp-1-xplo.vercel.app"],
-             "methods": ["POST", "OPTIONS"],
+             "methods": ["POST", "GET", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization"],
              "expose_headers": ["Content-Type"],
              "max_age": 86400,
@@ -33,15 +34,17 @@ CORS(app,
 
 load_dotenv()
 
+# Food Analysis Labels
 LABELS = ["Clearly Healthy", "Borderline", "Mixed", "Clearly Unhealthy"]
+
 class HealthAssistant:
-    def __init__(self):
+    def __init__(self, api_key: str = None):
         """Initialize both GLP-1 and Food Analysis capabilities"""
         # GLP-1 Configuration
-        self.pplx_api_key = os.getenv('PPLX_API_KEY')
+        self.pplx_api_key = api_key or os.getenv('PPLX_API_KEY')
         if not self.pplx_api_key:
             raise ValueError("PPLX API key not provided")
-        
+            
         self.pplx_model = "llama-3.1-sonar-large-128k-online"
         self.pplx_headers = {
             "Authorization": f"Bearer {self.pplx_api_key}",
@@ -69,8 +72,9 @@ You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1
    - Important safety considerations or disclaimers
    - An encouraging closing that reinforces their healthcare journey
 
-4. Provide response in a simple manner that is easy to understand at preferably a 11th grade literacy level with reduced pharmaceutical or medical jargon
-5. Always Return sources in a hyperlink format
+4. Always provide source citations which is related to the generated response. Importantly only provide sources for about GLP-1 medications
+5. Provide response in a simple manner that is easy to understand at preferably a 11th grade literacy level with reduced pharmaceutical or medical jargon
+6. Always Return sources in a hyperlink format
 """
 
     def load_models(self):
@@ -85,7 +89,7 @@ You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1
             logger.error(f"Error loading CLIP models: {str(e)}")
             raise
 
-    def get_glp1_response(self, query: str) -> Dict[str, Any]:
+    def get_response(self, query: str) -> Dict[str, Any]:
         """Get response for GLP-1 related queries"""
         try:
             if not query.strip():
@@ -114,10 +118,12 @@ You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1
             response_data = response.json()
             content = response_data['choices'][0]['message']['content']
             
+            query_category = self.categorize_query(query)
+            
             return {
                 "status": "success",
                 "query": query,
-                "query_category": self.categorize_query(query),
+                "query_category": query_category,
                 "response": content.strip(),
                 "disclaimer": "Always consult your healthcare provider before making any changes to your medication or treatment plan.",
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -242,7 +248,7 @@ def chat():
             }), 400
 
         assistant = HealthAssistant()
-        response = assistant.get_glp1_response(query)
+        response = assistant.get_response(query)
         
         return jsonify(response)
 
@@ -290,12 +296,12 @@ def analyze_image():
         image_data = base64.b64decode(data['image'].split(',')[1])
         
         # Process image using HealthAssistant
-        health_assistant = HealthAssistant()
-        result = health_assistant.analyze_food(image_data)
+        assistant = HealthAssistant()
+        result = assistant.analyze_food(image_data)
         
         logger.info(f"Image analysis completed: {result}")
         
-        return jsonify(result)  # Return the result directly
+        return jsonify(result)
 
     except Exception as e:
         logger.error(f"Error in analyze_image: {str(e)}")
@@ -309,11 +315,10 @@ def analyze_image():
 def health_check():
     return jsonify({'status': 'healthy'}), 200
 
-
 def main():
-    """Main function to run the GLP-1 Assistant"""
+    """Main function to run the Health Assistant"""
     try:
-        bot = GLP1Bot()
+        assistant = HealthAssistant()
         
         while True:
             query = input("Enter your question (or 'quit' to exit): ").strip()
@@ -321,14 +326,14 @@ def main():
             if query.lower() == 'quit':
                 response_data = {
                     "status": "exit",
-                    "message": "Thank you for using the GLP-1 Medication Assistant. Goodbye!",
+                    "message": "Thank you for using the Health Assistant. Goodbye!",
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 print(json.dumps(response_data, indent=2))
                 break
             
             if query:
-                response = bot.get_response(query)
+                response = assistant.get_response(query)
                 print(json.dumps(response, indent=2))
             else:
                 error_response = {
@@ -348,4 +353,5 @@ def main():
         print(json.dumps(error_response, indent=2))
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    print("Starting Flask server on http://localhost:5000")
+    app.run(host='0.0.0.0', port=5000, debug=True)
