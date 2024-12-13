@@ -11,3 +11,7 @@ flask-cors
 psycopg2-binary
 requests
 numpy
+Pillow
+transformers
+torch
+openai
