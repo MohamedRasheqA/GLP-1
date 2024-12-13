@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
-import { Heart, Home, MessageCircle } from "lucide-react"
+import { Heart, Home, MessageCircle, Calculator } from "lucide-react"
 
 export function Header() {
   return (
@@ -24,6 +24,12 @@ export function Header() {
               <Button variant="ghost" className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-100">
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Chat
+              </Button>
+            </Link>
+            <Link href="/calculator">
+              <Button variant="ghost" className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-100">
+                <Calculator className="mr-2 h-5 w-5" />
+                Calculator
               </Button>
             </Link>
           </nav>
