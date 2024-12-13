@@ -9,4 +9,7 @@ pinecone-client
 langsmith
 flask-cors
 psycopg2-binary
-
+pillow
+torch
+requests
+openai
