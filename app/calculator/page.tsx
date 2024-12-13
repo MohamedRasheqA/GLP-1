@@ -44,7 +44,7 @@ export default function Calculator() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.details || 'Failed to analyze image')
+        throw new Error(errorData.error || 'Failed to analyze image')
       }
 
       const result = await response.json()
