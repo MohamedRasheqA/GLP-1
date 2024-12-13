@@ -12,10 +12,10 @@ export async function POST(request: Request) {
   try {
     const { image } = await request.json();
     
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+   
     
     console.log('Sending request to backend...');
-    const response = await fetch(`${backendUrl}/api/calculator`, {
+    const response = await fetch(`https://glp-1-xplo.vercel.app/api/calculator`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -47,8 +47,8 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    const response = await fetch(`${backendUrl}/api/health`, {
+    
+    const response = await fetch(`https://glp-1-xplo.vercel.app/api/calaculator`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
