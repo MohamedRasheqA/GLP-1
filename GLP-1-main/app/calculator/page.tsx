@@ -36,18 +36,17 @@ export default function Calculator() {
 
   const formatResponse = (data: AnalysisResult): FormattedResponse => {
     let formattedContent = `
-      <h2 class="text-lg font-semibold text-blue-700 mt-6 mb-3">Analysis Details</h2>
       ${data.analysis.split('\n').map(line => {
         if (line.startsWith('- **')) {
           const [heading, ...descriptionParts] = line.replace('- **', '').split('**:');
           const description = descriptionParts.join('**:').trim();
           return `
             <div class="mb-4">
-              <div class="font-semibold text-blue-700">${heading}:</div>
-              <div class="ml-4 text-black">${description}</div>
+              <div class="font-semibold">${heading}:</div>
+              <div class="ml-4">${description}</div>
             </div>`;
         }
-        return `<div class="ml-4 my-2 text-black">${line}</div>`;
+        return `<div class="ml-4 my-2">${line}</div>`;
       }).join('')}
     `;
 
@@ -116,87 +115,96 @@ export default function Calculator() {
       <div className="relative min-h-screen flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center p-4 relative z-20">
-          <Card className="w-full max-w-[95%] lg:max-w-[85%] mx-auto bg-white/80 backdrop-blur-sm">
+          <Card className={`h-[80vh] ${analysisResult ? 'w-[95%]' : 'w-[600px]'} mx-auto bg-white/80 backdrop-blur-sm`}>
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-[#FE3301] text-center">
                 Food Image Analysis
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="relative max-w-xl mx-auto">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="block w-full text-sm text-black file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#FE3301] file:text-white file:transition-colors file:hover:bg-[#FE3301]/90 hover:cursor-pointer"
-                />
-              </div>
-
-              {selectedImage && (
-                <div className="relative w-64 h-64 mx-auto rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105">
-                  <Image
-                    src={selectedImage}
-                    alt="Selected food image"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                </div>
-              )}
-
-              <div className="max-w-xl mx-auto">
-                <Button
-                  onClick={analyzeImage}
-                  disabled={!selectedImage || isLoading}
-                  className="w-full bg-[#FE3301] text-white px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:bg-[#FE3301]/90 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] active:shadow-md focus:outline-none focus:ring-2 focus:ring-[#FE3301]/50"
-                >
-                  <span className="inline-flex items-center justify-center">
-                    {isLoading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                        </svg>
-                        Analyzing...
-                      </>
-                    ) : (
-                      'Analyze Image'
-                    )}
-                  </span>
-                </Button>
-              </div>
-
-              {error && (
-                <div className="max-w-xl mx-auto p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 animate-fadeIn">
-                  {error}
-                </div>
-              )}
-
-              {analysisResult && (
-                <div className="bg-white p-8 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg animate-fadeIn">
-                  <div className="space-y-4 max-w-4xl mx-auto">
-                    <div className="formatted-response">
-                      <div className="text-sm text-blue-700 mb-2">
-                        Category: <span className="text-black">{analysisResult.category}</span>
-                      </div>
-                      <div className="text-sm text-blue-700 mb-2">
-                        Confidence: <span className="text-black">{analysisResult.confidence.toFixed(2)}%</span>
-                      </div>
-                      <div 
-                        className="prose max-w-none"
-                        dangerouslySetInnerHTML={{ 
-                          __html: formatResponse(analysisResult).content 
-                        }}
-                      />
-                      {analysisResult.timestamp && (
-                        <div className="text-xs text-gray-500 mt-2">
-                          {new Date(analysisResult.timestamp).toLocaleTimeString()}
-                        </div>
-                      )}
-                    </div>
+            <CardContent className="h-[calc(100%-5rem)] overflow-hidden">
+              <div className={`h-full ${analysisResult ? 'grid grid-cols-1 lg:grid-cols-2 gap-6' : 'flex flex-col items-center justify-center'}`}>
+                {/* Left Column - Image Upload and Preview */}
+                <div className={`space-y-6 ${analysisResult ? 'h-full overflow-y-auto' : 'w-full max-w-md'}`}>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="block w-full text-sm text-black file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#FE3301] file:text-white file:transition-colors file:hover:bg-[#FE3301]/90 hover:cursor-pointer"
+                    />
                   </div>
+
+                  {selectedImage && (
+                    <div className="relative w-full h-[300px] rounded-lg overflow-hidden shadow-lg transition-transform duration-300 hover:scale-105">
+                      <Image
+                        src={selectedImage}
+                        alt="Selected food image"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={analyzeImage}
+                    disabled={!selectedImage || isLoading}
+                    className="w-full bg-[#FE3301] text-white px-6 py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:bg-[#FE3301]/90 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] active:shadow-md focus:outline-none focus:ring-2 focus:ring-[#FE3301]/50"
+                  >
+                    <span className="inline-flex items-center justify-center">
+                      {isLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                          </svg>
+                          Analyzing...
+                        </>
+                      ) : (
+                        'Analyze Image'
+                      )}
+                    </span>
+                  </Button>
                 </div>
-              )}
+
+                {/* Right Column - Analysis Results */}
+                {(error || analysisResult) && (
+                  <div className="h-full overflow-y-auto">
+                    {error && (
+                      <div className="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200 animate-fadeIn">
+                        {error}
+                      </div>
+                    )}
+
+                    {analysisResult && (
+                      <div className="h-full p-6 space-y-4">
+                        <div className="mb-6">
+                          <div className="text-lg font-semibold mb-2">Analysis Results</div>
+                          <div className="space-y-2">
+                            <div className="text-sm">
+                              Category: <span className="font-medium">{analysisResult.category}</span>
+                            </div>
+                            <div className="text-sm">
+                              Confidence: <span className="font-medium">{analysisResult.confidence.toFixed(2)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div 
+                          className="prose max-w-none text-sm"
+                          dangerouslySetInnerHTML={{ 
+                            __html: formatResponse(analysisResult).content 
+                          }}
+                        />
+                        {analysisResult.timestamp && (
+                          <div className="text-xs text-gray-500 mt-4">
+                            {new Date(analysisResult.timestamp).toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
