@@ -6,8 +6,6 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 from dotenv import load_dotenv
 from datetime import datetime
-# import io  # Commented out - used for image processing
-# import base64  # Commented out - used for image encoding/decoding
 import logging
 from openai import OpenAI
 
@@ -26,16 +24,10 @@ CORS(app, resources={
 
 load_dotenv()
 
-"""
-Food Analysis Configuration - Currently Disabled
-These labels were used for categorizing food images:
-LABELS = [
-    "Clearly Healthy",
-    "Borderline", 
-    "Mixed",
-    "Clearly Unhealthy"
-]
-"""
+# Initialize OpenAI client at application level
+openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+if not os.getenv('OPENAI_API_KEY'):
+    raise ValueError("OpenAI API key not provided")
 
 class UserProfileManager:
     def __init__(self, openai_client: OpenAI):
@@ -129,92 +121,111 @@ You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1
 4. Provide response in a simple manner that is easy to understand at preferably a 11th grade literacy level with reduced pharmaceutical or medical jargon
 5. Always Return sources in a hyperlink format
 """
-        # OpenAI Configuration
-        self.openai_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        if not os.getenv('OPENAI_API_KEY'):
-            raise ValueError("OpenAI API key not provided")
-
         # Conversation History Management
         self.conversation_history = []
         self.max_history_length = 5
         
         self.initialized = True
 
-    # ... [Previous methods remain unchanged] ...
-
-    """
-    Image Analysis Feature - Currently Disabled
-    
-    def analyze_food(self, image_data) -> Dict[str, Any]:
-        '''
-        Analyze food image for comprehensive health assessment
-        Parameters:
-            image_data: Binary image data
-        Returns:
-            Dict containing analysis results including category, confidence, and detailed analysis
-        '''
+    def get_glp1_response(self, query: str) -> Dict[str, Any]:
+        """Get response for GLP-1 related queries"""
         try:
-            base64_image = base64.b64encode(image_data).decode('utf-8')
+            if not query.strip():
+                return {
+                    "status": "error",
+                    "message": "Please enter a valid question."
+                }
             
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "System prompt for food analysis..."  # Abbreviated for clarity
-                    },
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                max_tokens=1000
+            response = self.get_pplx_response(query)
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error in get_glp1_response: {str(e)}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    def get_pplx_response(self, query: str) -> Dict[str, Any]:
+        """Get response while maintaining conversation context"""
+        try:
+            # Build messages including conversation history
+            messages = [
+                {"role": "system", "content": self.pplx_system_prompt}
+            ]
+            
+            # Add conversation history
+            for exchange in self.conversation_history:
+                messages.append({"role": "user", "content": exchange["query"]})
+                messages.append({"role": "assistant", "content": exchange["response"]})
+            
+            # Add current query
+            messages.append({
+                "role": "user", 
+                "content": f"{query}\n\nPlease include sources for the information provided, formatted as 'Title: URL' on separate lines."
+            })
+            
+            logger.info(f"Sending request with messages: {messages}")
+            
+            payload = {
+                "model": self.pplx_model,
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": 1500
+            }
+            
+            response = requests.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers=self.pplx_headers,
+                json=payload
             )
             
-            analysis_text = response.choices[0].message.content
-            lines = analysis_text.split('\n')
+            logger.info(f"API Response status: {response.status_code}")
             
-            # Analysis parsing logic
-            category = ""
-            confidence = 0
-            analysis = []
-            current_section = ""
-
-            for line in lines:
-                if line.startswith('Category:'):
-                    category = line.split(':', 1)[1].strip()
-                elif line.startswith('Confidence:'):
-                    confidence = float(line.split(':', 1)[1].strip().replace('%', ''))
-                elif line.startswith('Analysis:'):
-                    current_section = "analysis"
-                elif current_section == "analysis":
-                    analysis.append(line.strip())
-
-            analysis_text = '\n'.join(analysis)
+            response.raise_for_status()
+            response_data = response.json()
+            content = response_data['choices'][0]['message']['content']
+            
+            # Update conversation history
+            self.conversation_history.append({
+                "query": query,
+                "response": content,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            # Maintain history size
+            if len(self.conversation_history) > self.max_history_length:
+                self.conversation_history.pop(0)
+            
+            logger.info(f"Generated response: {content[:100]}...")
             
             return {
                 "status": "success",
-                "category": category,
-                "confidence": confidence,
-                "analysis": analysis_text,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "query": query,
+                "query_category": self.categorize_query(query),
+                "response": content.strip(),
+                "disclaimer": "Always consult your healthcare provider before making any changes to your medication or treatment plan.",
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "conversation_history": self.conversation_history
             }
             
         except Exception as e:
-            logger.error(f"Error in analyze_food: {str(e)}")
+            logger.error(f"Error in get_pplx_response: {str(e)}")
             return {
                 "status": "error",
-                "message": str(e),
+                "query": query,
+                "query_category": "error",
+                "response": f"An error occurred: {str(e)}",
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-    """
+    
+    def clear_conversation_history(self):
+        """Clear the conversation history"""
+        self.conversation_history = []
+    
+    def get_conversation_history(self) -> List[Dict[str, Any]]:
+        """Get the current conversation history"""
+        return self.conversation_history
 
     def categorize_query(self, query: str) -> str:
         """Categorize the user query"""
@@ -266,61 +277,80 @@ def chat():
             "message": str(e)
         }), 500
 
-"""
-Image Analysis Routes - Currently Disabled
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'healthy'}), 200
 
-@app.route('/api/analyze-food', methods=['POST'])
-def analyze_food():
-    '''Handle food image analysis requests'''
+@app.route('/api/profile/personal', methods=['POST'])
+def process_personal_info():
     try:
-        if 'image' not in request.files:
+        data = request.get_json()
+        user_input = data.get('input')
+        
+        if not user_input:
             return jsonify({
                 "status": "error",
-                "message": "No image file provided"
+                "message": "No input provided"
             }), 400
 
-        image_file = request.files['image']
-        image_data = image_file.read()
+        profile_manager = UserProfileManager(openai_client)  # Use global client
+        result = profile_manager.process_user_input(user_input, "personal_info")
         
+        return jsonify({
+            "status": "success",
+            "data": result
+        })
+
+    except Exception as e:
+        logger.error(f"Error in process_personal_info: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/api/profile/medical', methods=['POST'])
+def process_medical_info():
+    try:
+        data = request.get_json()
+        user_input = data.get('input')
+        
+        if not user_input:
+            return jsonify({
+                "status": "error",
+                "message": "No input provided"
+            }), 400
+
+        profile_manager = UserProfileManager(openai_client)  # Use global client
+        result = profile_manager.process_user_input(user_input, "medical_info")
+        
+        return jsonify({
+            "status": "success",
+            "data": result
+        })
+
+    except Exception as e:
+        logger.error(f"Error in process_medical_info: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+@app.route('/api/chat-history', methods=['GET'])
+def get_chat_history():
+    try:
         assistant = HealthAssistant()
-        response = assistant.analyze_food(image_data)
+        history = assistant.get_chat_history()
         
-        return jsonify(response)
+        return jsonify({
+            "status": "success",
+            "history": history
+        })
 
     except Exception as e:
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
-
-@app.route('/api/calculator', methods=['POST'])
-def analyze_image():
-    '''Handle image analysis calculator requests'''
-    try:
-        data = request.json
-        if not data or 'image' not in data:
-            logger.error("No image data in request")
-            return jsonify({
-                'status': 'error',
-                'message': 'No image data provided'
-            }), 400
-
-        image_data = base64.b64decode(data['image'].split(',')[1])
-        health_assistant = HealthAssistant()
-        result = health_assistant.analyze_food(image_data)
-        
-        logger.info(f"Image analysis completed: {result}")
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"Error in analyze_image: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-"""
-
-# ... [Remaining routes and code remain unchanged] ...
 
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5000")
