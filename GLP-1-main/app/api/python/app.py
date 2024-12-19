@@ -4,30 +4,51 @@ from typing import Dict, Any, Optional, Generator, List, ClassVar
 import os
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
-from dotenv import load_dotenv
 from datetime import datetime
 import logging
 from openai import OpenAI
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["http://localhost:3000", "https://glp-1-lovat.vercel.app"],
-        "methods": ["POST", "GET", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
+def get_session():
+    if not hasattr(get_session, 'session'):
+        session = requests.Session()
+        retry = Retry(total=3, backoff_factor=0.1)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        get_session.session = session
+    return get_session.session
 
-load_dotenv()
+def get_openai_client():
+    try:
+        if not hasattr(get_openai_client, 'client'):
+            api_key = os.environ.get('OPENAI_API_KEY')
+            if not api_key:
+                logger.error("OpenAI API key not found")
+                raise ValueError("OpenAI API key not provided")
+            get_openai_client.client = OpenAI(api_key=api_key)
+        return get_openai_client.client
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+        raise
 
-# Initialize OpenAI client at application level
-openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-if not os.getenv('OPENAI_API_KEY'):
-    raise ValueError("OpenAI API key not provided")
+def init_app():
+    app = Flask(__name__)
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:3000", "https://glp-1-lovat.vercel.app"],
+            "methods": ["POST", "GET", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+    return app
+
+app = init_app()
 
 class UserProfileManager:
     def __init__(self, openai_client: OpenAI):
@@ -95,7 +116,7 @@ class HealthAssistant:
             return
             
         # GLP-1 Configuration
-        self.pplx_api_key = os.getenv('PPLX_API_KEY')
+        self.pplx_api_key = os.environ.get('PPLX_API_KEY')
         if not self.pplx_api_key:
             raise ValueError("PPLX API key not provided")
         
@@ -124,6 +145,7 @@ You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1
         # Conversation History Management
         self.conversation_history = []
         self.max_history_length = 5
+        self.session = get_session()
         
         self.initialized = True
 
@@ -174,7 +196,7 @@ You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1
                 "max_tokens": 1500
             }
             
-            response = requests.post(
+            response = self.session.post(
                 "https://api.perplexity.ai/chat/completions",
                 headers=self.pplx_headers,
                 json=payload
@@ -245,6 +267,10 @@ You are a specialized medical information assistant focused EXCLUSIVELY on GLP-1
                 return category
         return "general"
 
+def get_profile_manager():
+    client = get_openai_client()
+    return UserProfileManager(client)
+
 # Flask routes
 @app.route('/')
 @app.route('/database')
@@ -293,7 +319,7 @@ def process_personal_info():
                 "message": "No input provided"
             }), 400
 
-        profile_manager = UserProfileManager(openai_client)  # Use global client
+        profile_manager = get_profile_manager()
         result = profile_manager.process_user_input(user_input, "personal_info")
         
         return jsonify({
@@ -320,7 +346,7 @@ def process_medical_info():
                 "message": "No input provided"
             }), 400
 
-        profile_manager = UserProfileManager(openai_client)  # Use global client
+        profile_manager = get_profile_manager()
         result = profile_manager.process_user_input(user_input, "medical_info")
         
         return jsonify({
@@ -351,6 +377,11 @@ def get_chat_history():
             "status": "error",
             "message": str(e)
         }), 500
+
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'public, max-age=300'  # Cache for 5 minutes
+    return response
 
 if __name__ == '__main__':
     print("Starting Flask server on http://localhost:5000")
