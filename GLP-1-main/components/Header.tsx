@@ -16,7 +16,7 @@ export function Header() {
         <div className="flex items-center justify-between w-full">
           <Link 
             href="/" 
-            className="flex items-center space-x-2 animate-wiggle animate-twice"
+            className="flex items-center space-x-2 animate-wiggle animate-twice ml-4"
           >
             <Heart 
               className={`h-8 w-8 text-[#FE3301] transition-transform duration-300 ${
