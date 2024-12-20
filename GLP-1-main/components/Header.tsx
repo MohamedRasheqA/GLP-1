@@ -8,7 +8,7 @@ export function Header() {
 
   return (
     <header 
-      className="sticky top-0 z-50 w-full border-b border-orange-200 shadow-sm transition-all duration-300 hover:shadow-md"
+      className="sticky top-0 z-50 w-full border-b border-orange-200 shadow-sm transition-all duration-300 hover:shadow-md bg-white/95 backdrop-blur-sm"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
