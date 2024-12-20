@@ -1,33 +1,28 @@
 import { NextResponse } from 'next/server';
+
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
     const { query } = await request.json();
-
+    
     if (!query) {
       return NextResponse.json({
         status: 'error',
         message: 'No query provided'
       }, { status: 400 });
     }
-
+    
     console.log('Sending request to LLM API:', query);
     
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 290000);
-
     const response = await fetch('https://glp-1-backend.vercel.app/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({ query }),
-      signal: controller.signal
+      body: JSON.stringify({ query })
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -37,7 +32,7 @@ export async function POST(request: Request) {
         message: `LLM API responded with status: ${response.status}`
       }, { status: response.status });
     }
-
+    
     const data = await response.json();
     return NextResponse.json(data);
     
@@ -48,4 +43,4 @@ export async function POST(request: Request) {
       message: error instanceof Error ? error.message : 'Internal server error'
     }, { status: 500 });
   }
-} 
+}
