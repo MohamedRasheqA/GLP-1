@@ -13,7 +13,6 @@ export default function Home() {
     <>
     <Header />
     <Section1 isSignedIn={false} onSignIn={() => {}} />
-    <Aboutus />
     <FeaturesSection />
     <FAQSection />
     <Footer />
