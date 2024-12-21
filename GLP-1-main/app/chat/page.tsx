@@ -132,14 +132,14 @@ export default function Chat() {
         <Header />
         <main className="container mx-auto px-4 py-8">
           <h1 className="text-3xl font-bold text-center mb-8 text-[#FE3301]">
-            Medical Consultation Assistant
+            GLP-1 Assistant
           </h1>
           
           <Card className="max-w-4xl mx-auto bg-white/80 backdrop-blur-sm shadow-lg">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2 text-[#FE3301]">
                 <MessageCircle className="h-6 w-6" />
-                Medical Discussion
+                GLP-1 Discussion
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
